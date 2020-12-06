@@ -26,23 +26,34 @@ def print_help():
     print("* 다른 명령어:")
     print("p: 한글패치 정렬용 공백 필터링 토글")
     print("s: 검색, i: 인덱스 생성/새로고침")
+    if ASM_FILE is None:
+        print("o: 수정 모드 진입")
+    else:
+        # print("w: 저장, c: 수정 모드 종료")
+        pass
     print("h: 도움말, q: 종료")
     print("")
     print("==== ====== ====")
 
 def input_cmd_parser(input_str):
+    if ASM_FILE is not None:
+        ref = ASM_FILE
+    else:
+        ref = INDEX_FILE
     cmd = input_str[0]
     if cmd == "h":
         print_help()
     elif cmd == "p":
-        INDEX_FILE.hangul_padding_toggle()
+        ref.hangul_padding_toggle()
     elif cmd == "s":
-        INDEX_FILE.search()
+        ref.search()
     elif cmd == "i":
         INDEX_FILE.create_index_cache()
         INDEX_FILE.open_index_cache()
     elif cmd == "q":
         sys.exit()
+    elif cmd == "o":
+        INDEX_FILE.open_asm_file()
     else:
         raise SyntaxError
 
@@ -247,6 +258,20 @@ class StrIndex(TextListCommon):
         print("Index cache was created")
         return True
 
+    def open_asm_file(self):
+        print("수정할 줄 번호를 입력하세요")
+        print(">> ", end="", flush=True)
+        input_str = stdin.readline()
+        input_str = input_str[:-1] # assuming \n
+        if not input_str.isdecimal():
+            raise SyntaxError
+        linenum = int(input_str)
+        self.print_line(linenum)
+        path = self.text_list_contents.lnlist[linenum].path
+        print("위 줄이 포함된 {}파일을 수정합니다...".format(path))
+        global ASM_FILE
+        ASM_FILE = StrAsm(path)
+
     class Deserialization:
         def __init__(self, input_line):
             input_line = input_line.strip()
@@ -325,9 +350,13 @@ if __name__ == '__main__':
             print("범위 초과")
             continue
 
+        if ASM_FILE is not None:
+            ref = ASM_FILE
+        else:
+            ref = INDEX_FILE
         try:
             for main_prn_ln in read_list:
-                INDEX_FILE.print_line(main_prn_ln)
+                ref.print_line(main_prn_ln)
         except (IndexError, ValueError):
             print("범위 초과")
             continue
