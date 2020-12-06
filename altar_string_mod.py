@@ -5,7 +5,6 @@ import unicodedata
 from sys import stdin
 import sys
 import re
-import datetime
 import os
 
 WORK_FOLDER="./UTKRStrMod"
