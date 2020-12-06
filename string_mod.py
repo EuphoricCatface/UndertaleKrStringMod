@@ -27,6 +27,10 @@ def input_cmd_parser(input_str):
         print("저장하는 중...")
         with open(output_file_name.format(datetime.datetime.now().isoformat()), 'w') as output_file:
             json.dump(input_file_json, output_file)
+    elif cmd == "s":
+        search()
+    elif cmd == "e":
+        edit()
     elif cmd == "q":
         exit()
     else:
@@ -151,15 +155,16 @@ def hangul_pad_add(input_line):
 
 def print_help():
     print("==== 도움말 ====")
-    print("스트링 출력: 읽고 싶은 번호 혹은 범위를 입력해 주세요")
+    print("* 스트링 출력: 읽고 싶은 번호 혹은 범위를 입력해 주세요")
     print("예시:")
     print("> 80 (단일)")
     print("> 10188 - 10241(시작 - 끝)")
     print("> 10730, 10(시작, 열 갯수)")
     print("공백 필터 여부, 스트링 번호, 스트링 순으로 출력됩니다.")
     print("")
-    print("다른 명령어:")
+    print("* 다른 명령어:")
     print("p: 한글패치 정렬용 공백 필터링 토글")
+    print("s: 검색, e: 수정")
     print("w: 현재까지 수정사항 strings_out[현재일시].json에 저장")
     print("h: 도움말, q: 종료")
     print("")
@@ -175,6 +180,33 @@ def print_line(linenum):
             print("[*]", linenum, line_content)
         else:
             print("[ ]", linenum, line_content)
+
+def search():
+    print("검색할 문자열을 입력해 주세요")
+    print(">> ", end="", flush=True)
+    input_str = stdin.readline()
+    input_str = input_str[:-1] # assuming \n
+    for i in range(len(input_file_json)):
+        if input_str in input_file_json[i]:
+            print_line(i)
+
+def edit():
+    print("수정할 줄 번호를 입력해 주세요")
+    print(">> ", end="", flush=True)
+    input_str = stdin.readline()
+    input_str = input_str[:-1] # assuming \n
+    if input_str.isdecimal() != True:
+        raise SyntaxError
+    linenum = int(input_str)
+    print("수정할 문자열을 입력해 주세요")
+    print_line(linenum)
+    print(">> ", end="", flush=True)
+    input_str = stdin.readline()
+    input_str = input_str[:-1] # assuming \n
+    input_file_json[linenum] = input_str
+    print("수정 완료:")
+    print_line(linenum)
+
 
 with open(input_file_name) as input_file:
 #    input_file_contents = input_file.read()
