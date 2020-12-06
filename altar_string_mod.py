@@ -15,6 +15,22 @@ FILE_CONTENTS = None
 
 padding_filtered = set()
 
+def print_help():
+    print("==== 도움말 ====")
+    print("* 스트링 출력: 읽고 싶은 번호 혹은 범위를 입력해 주세요")
+    print("예시:")
+    print("> 16858 (단일)")
+    print("> 11890 - 11940(시작 - 끝)")
+    print("> 1010, 10(시작, 열 갯수)")
+    print("공백 필터 여부, 스트링 번호, 스트링 순으로 출력됩니다.")
+    print("")
+    print("* 다른 명령어:")
+    print("p: 한글패치 정렬용 공백 필터링 토글")
+    print("s: 검색, i: 인덱스 생성/새로고침")
+    print("h: 도움말, q: 종료")
+    print("")
+    print("==== ====== ====")
+
 def input_cmd_parser(input_str):
     cmd = input_str[0]
     if cmd == "h":
@@ -147,22 +163,6 @@ def hangul_pad_add(input_line):
         padded_buf += " "
 
     return padded_buf + trail_sp
-
-def print_help():
-    print("==== 도움말 ====")
-    print("* 스트링 출력: 읽고 싶은 번호 혹은 범위를 입력해 주세요")
-    print("예시:")
-    print("> 16858 (단일)")
-    print("> 11890 - 11940(시작 - 끝)")
-    print("> 1010, 10(시작, 열 갯수)")
-    print("공백 필터 여부, 스트링 번호, 스트링 순으로 출력됩니다.")
-    print("")
-    print("* 다른 명령어:")
-    print("p: 한글패치 정렬용 공백 필터링 토글")
-    print("s: 검색, i: 인덱스 생성/새로고침")
-    print("h: 도움말, q: 종료")
-    print("")
-    print("==== ====== ====")
 
 def print_line(linenum):
     line_content = FILE_CONTENTS[linenum]
