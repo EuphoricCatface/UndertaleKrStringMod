@@ -3,6 +3,7 @@
 import json
 import unicodedata
 from sys import stdin
+import sys
 import re
 import datetime
 import os
@@ -26,7 +27,7 @@ def input_cmd_parser(input_str):
         create_index_cache()
         open_index_cache()
     elif cmd == "q":
-        exit()
+        sys.exit()
     else:
         raise SyntaxError
 
@@ -56,7 +57,7 @@ def hangul_padding_toggle():
         print("공백 필터링 적용 중...")
         for i in range(len(FILE_CONTENTS)):
             unpadded = hangul_pad_del(FILE_CONTENTS[i])
-            if unpadded == None:
+            if unpadded is None:
                 continue
             FILE_CONTENTS[i] = unpadded
             padding_filtered.add(i)
@@ -115,9 +116,9 @@ def hangul_pad_del(input_line):
         # We don't need to check the next, and also skip adding no_pad_buf
         skip_flag = True
 
-    if has_lo == False:
+    if not has_lo:
         return None
-    if lo_but_no_sp == True:
+    if lo_but_no_sp:
         return None
 
     return no_pad_buf + trail_sp
@@ -209,9 +210,10 @@ def create_index_cache():
     if not os.path.isdir(WORK_FOLDER):
         os.mkdir(WORK_FOLDER)
     print("Creating index cache...")
-    os.system('grep -r ./code/ -e "push\.cst string" > {}/{}'
+    os.system('grep -r ./code/ -e "push\\.cst string" > {}/{}'
             .format(WORK_FOLDER, INDEX_CACHE_FILE_NAME))
     print("Index cache was created")
+    return True
 
 def open_index_cache():
     cache_file_path = WORK_FOLDER + "/" + INDEX_CACHE_FILE_NAME
@@ -221,12 +223,12 @@ def open_index_cache():
         idx_cache_list = idx_cache_file.readlines()
     print("Index cache was successfully open")
     global FILE_CONTENTS
-    FILE_CONTENTS = deserialized_lines(idx_cache_list)
+    FILE_CONTENTS = DeserializedLines(idx_cache_list)
     print("Deserialization complete")
     return True
 
-class deserialized_lines:
-    class deserialized_line:
+class DeserializedLines:
+    class DeserializedLine:
         def __init__(self, input_line):
             input_line = input_line.strip()
             splt_ln = input_line.split(":")
@@ -238,8 +240,8 @@ class deserialized_lines:
 
     def __init__(self, input_lines):
         self.lnlist = []
-        for ln in input_lines:
-            self.lnlist.append(self.deserialized_line(ln))
+        for line in input_lines:
+            self.lnlist.append(self.DeserializedLine(line))
         self.edited_lines = set()
 
     def __getitem__(self, key):
@@ -258,7 +260,7 @@ if __name__ == '__main__':
         print("Opening {} instead".format(JSON_FILE_NAME))
         if not os.path.isfile(JSON_FILE_NAME):
             print("FATAL: {} was not found too".format(JSON_FILE_NAME))
-            exit(-1)
+            sys.exit(-1)
         with open(JSON_FILE_NAME) as input_file:
             # input_file_contents = input_file.read()
             print("{} was successfully open".format(JSON_FILE_NAME))
