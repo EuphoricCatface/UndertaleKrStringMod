@@ -196,7 +196,6 @@ class TextListCommon:
             self.lnlist = []
             for line in input_lines:
                 self.lnlist.append(deserialization(line))
-            self.edited_lines = set()
 
         def __getitem__(self, key):
             return self.lnlist[key].line
@@ -258,22 +257,51 @@ class StrIndex(TextListCommon):
             idx_quot = input_line.find('"')
             self.line = input_line[idx_quot+1:-1]
 
-def edit():
-    print("수정할 줄 번호를 입력해 주세요")
-    print(">> ", end="", flush=True)
-    input_str = stdin.readline()
-    input_str = input_str[:-1] # assuming \n
-    if not input_str.isdecimal():
-        raise SyntaxError
-    linenum = int(input_str)
-    print("수정할 문자열을 입력해 주세요")
-    print_line(linenum)
-    print(">> ", end="", flush=True)
-    input_str = stdin.readline()
-    input_str = input_str[:-1] # assuming \n
-    FILE_CONTENTS[linenum] = input_str
-    print("수정 완료:")
-    print_line(linenum)
+class StrAsm(TextListCommon):
+    def __init__(self, path):
+        TextListCommon.__init__(self)
+        self.asm_path = path
+        self.string_line_num_list = list()
+
+        lines_to_serialize = list()
+        with open(self.asm_path) as f:
+            self.asm_code_lines = f.readlines()
+        print("asm source was successfully open")
+        for i in range(len(self.asm_code_lines)):
+            if not "push.cst string" in self.asm_code_lines[i]:
+                continue
+
+            self.string_line_num_list.append(i)
+            lines_to_serialize.append(self.asm_code_lines[i])
+
+        self.text_list_contents = self.DeserializedLines(lines_to_serialize, self.Deserialization)
+        print("Deserialization complete")
+
+    def edit():
+        print("수정할 줄 번호를 입력해 주세요")
+        print(">> ", end="", flush=True)
+        input_str = stdin.readline()
+        input_str = input_str[:-1] # assuming \n
+        if not input_str.isdecimal():
+            raise SyntaxError
+        linenum = int(input_str)
+        print("수정할 문자열을 입력해 주세요")
+        print_line(linenum)
+        print(">> ", end="", flush=True)
+        input_str = stdin.readline()
+        input_str = input_str[:-1] # assuming \n
+        self.text_list_contents[linenum] = input_str
+        print("수정 완료:")
+        print_line(linenum)
+
+    class Deserialization:
+        def __init__(self, input_line):
+            input_line = input_line.strip()
+            splt_ln = input_line.split(":")
+            self.asmaddr = splt_ln[0]
+            
+            idx_quot = input_line.find('"')
+            self.line = input_line[idx_quot+1:-1]
 
 if __name__ == '__main__':
     cache_file_path = WORK_FOLDER + "/" + INDEX_CACHE_FILE_NAME
