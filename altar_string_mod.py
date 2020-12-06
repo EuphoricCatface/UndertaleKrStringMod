@@ -37,7 +37,7 @@ def input_cmd_parser(input_str):
     elif cmd == "p":
         INDEX_FILE.hangul_padding_toggle()
     elif cmd == "s":
-        search()
+        INDEX_FILE.search()
     elif cmd == "i":
         INDEX_FILE.create_index_cache()
         INDEX_FILE.open_index_cache()
@@ -170,7 +170,28 @@ class Paddable:
 
         return padded_buf + trail_sp
 
-class StrIndex(Paddable):
+class TextView:
+    def print_line(self, linenum):
+        line_content = self.file_contents[linenum]
+        if len(self.padding_filtered) == 0:
+            print(linenum, line_content)
+        else:
+            flag = linenum in self.padding_filtered
+            if flag:
+                print("[*]", linenum, line_content)
+            else:
+                print("[ ]", linenum, line_content)
+
+    def search(self):
+        print("검색할 문자열을 입력해 주세요")
+        print(">> ", end="", flush=True)
+        input_str = stdin.readline()
+        input_str = input_str[:-1] # assuming \n
+        for i in range(len(self.file_contents)):
+            if input_str in self.file_contents[i]:
+                self.print_line(i)
+
+class StrIndex(Paddable, TextView):
     def __init__(self, path):
         Paddable.__init__(self)
         self.cache_path = path
@@ -238,27 +259,6 @@ class StrIndex(Paddable):
         def __len__(self):
             return len(self.lnlist)
 
-
-def print_line(prn_file, linenum):
-    line_content = prn_file.file_contents[linenum]
-    if len(prn_file.padding_filtered) == 0:
-        print(linenum, line_content)
-    else:
-        flag = linenum in prn_file.padding_filtered
-        if flag:
-            print("[*]", linenum, line_content)
-        else:
-            print("[ ]", linenum, line_content)
-
-def search():
-    print("검색할 문자열을 입력해 주세요")
-    print(">> ", end="", flush=True)
-    input_str = stdin.readline()
-    input_str = input_str[:-1] # assuming \n
-    for i in range(len(INDEX_FILE.file_contents)):
-        if input_str in INDEX_FILE.file_contents[i]:
-            print_line(INDEX_FILE, i)
-
 def edit():
     print("수정할 줄 번호를 입력해 주세요")
     print(">> ", end="", flush=True)
@@ -300,7 +300,7 @@ if __name__ == '__main__':
 
         try:
             for main_prn_ln in read_list:
-                print_line(INDEX_FILE, main_prn_ln)
+                INDEX_FILE.print_line(main_prn_ln)
         except (IndexError, ValueError):
             print("범위 초과")
             continue
