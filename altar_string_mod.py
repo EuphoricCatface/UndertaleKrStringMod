@@ -12,7 +12,7 @@ INDEX_CACHE_FILE_NAME="str_cache.txt"
 JSON_FILE_NAME="strings.json"
 FILE_CONTENTS = None
 
-padding_filtered = set()
+PADDING_FILTERED = set()
 
 def print_help():
     print("==== 도움말 ====")
@@ -68,22 +68,22 @@ def input_decimal_parser(input_str):
     return [int(input_str)]
 
 def hangul_padding_toggle():
-    if len(padding_filtered) == 0:
+    if len(PADDING_FILTERED) == 0:
         print("공백 필터링 적용 중...")
         for i in range(len(FILE_CONTENTS)):
             unpadded = hangul_pad_del(FILE_CONTENTS[i])
             if unpadded is None:
                 continue
             FILE_CONTENTS[i] = unpadded
-            padding_filtered.add(i)
+            PADDING_FILTERED.add(i)
     else:
         print("공백 필터링 해제 중...")
-        padded_list = list(padding_filtered)
+        padded_list = list(PADDING_FILTERED)
         padded_list.sort()
         for i in padded_list:
             padded = hangul_pad_add(FILE_CONTENTS[i])
             FILE_CONTENTS[i] = padded
-            padding_filtered.remove(i)
+            PADDING_FILTERED.remove(i)
 
 def hangul_pad_del(input_line):
     # returns None if the line doesn't seem to be padded
@@ -165,10 +165,10 @@ def hangul_pad_add(input_line):
 
 def print_line(linenum):
     line_content = FILE_CONTENTS[linenum]
-    if len(padding_filtered) == 0:
+    if len(PADDING_FILTERED) == 0:
         print(linenum, line_content)
     else:
-        flag = linenum in padding_filtered
+        flag = linenum in PADDING_FILTERED
         if flag:
             print("[*]", linenum, line_content)
         else:
