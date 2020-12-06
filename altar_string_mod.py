@@ -31,11 +31,13 @@ def print_help():
     print("==== ====== ====")
 
 def input_cmd_parser(input_str):
+    global FILE_CONTENTS
+    global PADDING_FILTERED
     cmd = input_str[0]
     if cmd == "h":
         print_help()
     elif cmd == "p":
-        hangul_padding_toggle()
+        [FILE_CONTENTS, PADDING_FILTERED] = hangul_padding_toggle(FILE_CONTENTS, PADDING_FILTERED)
     elif cmd == "s":
         search()
     elif cmd == "i":
@@ -67,23 +69,25 @@ def input_decimal_parser(input_str):
         return range(start, end)
     return [int(input_str)]
 
-def hangul_padding_toggle():
-    if len(PADDING_FILTERED) == 0:
+def hangul_padding_toggle(file_contents, padding_filtered):
+    if len(padding_filtered) == 0:
         print("공백 필터링 적용 중...")
-        for i in range(len(FILE_CONTENTS)):
-            unpadded = hangul_pad_del(FILE_CONTENTS[i])
+        for i in range(len(file_contents)):
+            unpadded = hangul_pad_del(file_contents[i])
             if unpadded is None:
                 continue
-            FILE_CONTENTS[i] = unpadded
-            PADDING_FILTERED.add(i)
+            file_contents[i] = unpadded
+            padding_filtered.add(i)
     else:
         print("공백 필터링 해제 중...")
-        padded_list = list(PADDING_FILTERED)
+        padded_list = list(padding_filtered)
         padded_list.sort()
         for i in padded_list:
-            padded = hangul_pad_add(FILE_CONTENTS[i])
-            FILE_CONTENTS[i] = padded
-            PADDING_FILTERED.remove(i)
+            padded = hangul_pad_add(file_contents[i])
+            file_contents[i] = padded
+            padding_filtered.remove(i)
+
+    return [file_contents, padding_filtered]
 
 def hangul_pad_del(input_line):
     # returns None if the line doesn't seem to be padded
