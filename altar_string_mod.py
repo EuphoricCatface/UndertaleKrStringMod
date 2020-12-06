@@ -68,26 +68,27 @@ def input_decimal_parser(input_str):
     return [int(input_str)]
 
 
-class Paddable:
+class TextListCommon:
     def __init__(self):
+        self.text_list_contents = None
         self.padding_filtered = set()
 
     def hangul_padding_toggle(self):
         if len(self.padding_filtered) == 0:
             print("공백 필터링 적용 중...")
-            for i in range(len(self.file_contents)):
-                unpadded = self.hangul_pad_del(self.file_contents[i])
+            for i in range(len(self.text_list_contents)):
+                unpadded = self.hangul_pad_del(self.text_list_contents[i])
                 if unpadded is None:
                     continue
-                self.file_contents[i] = unpadded
+                self.text_list_contents[i] = unpadded
                 self.padding_filtered.add(i)
         else:
             print("공백 필터링 해제 중...")
             padded_list = list(self.padding_filtered)
             padded_list.sort()
             for i in padded_list:
-                padded = self.hangul_pad_add(self.file_contents[i])
-                self.file_contents[i] = padded
+                padded = self.hangul_pad_add(self.text_list_contents[i])
+                self.text_list_contents[i] = padded
                 self.padding_filtered.remove(i)
 
     @staticmethod
@@ -170,9 +171,8 @@ class Paddable:
 
         return padded_buf + trail_sp
 
-class TextView:
     def print_line(self, linenum):
-        line_content = self.file_contents[linenum]
+        line_content = self.text_list_contents[linenum]
         if len(self.padding_filtered) == 0:
             print(linenum, line_content)
         else:
@@ -187,15 +187,30 @@ class TextView:
         print(">> ", end="", flush=True)
         input_str = stdin.readline()
         input_str = input_str[:-1] # assuming \n
-        for i in range(len(self.file_contents)):
-            if input_str in self.file_contents[i]:
+        for i in range(len(self.text_list_contents)):
+            if input_str in self.text_list_contents[i]:
                 self.print_line(i)
 
-class StrIndex(Paddable, TextView):
+    class DeserializedLines:
+        def __init__(self, input_lines, deserialization):
+            self.lnlist = []
+            for line in input_lines:
+                self.lnlist.append(deserialization(line))
+            self.edited_lines = set()
+
+        def __getitem__(self, key):
+            return self.lnlist[key].line
+
+        def __setitem__(self, key, value):
+            self.lnlist[key].line = value
+
+        def __len__(self):
+            return len(self.lnlist)
+
+class StrIndex(TextListCommon):
     def __init__(self, path):
-        Paddable.__init__(self)
+        TextListCommon.__init__(self)
         self.cache_path = path
-        self.file_contents = None
 
         if not self.open_index_cache():
             print("Index cache was not found")
@@ -206,7 +221,7 @@ class StrIndex(Paddable, TextView):
             with open(JSON_FILE_NAME) as input_file:
                 # input_file_contents = input_file.read()
                 print("{} was successfully open".format(JSON_FILE_NAME))
-                self.file_contents = json.load(input_file)
+                self.text_list_contents = json.load(input_file)
                 print("json successfully parsed")
 
     def open_index_cache(self):
@@ -215,7 +230,7 @@ class StrIndex(Paddable, TextView):
         with open('{}/{}'.format(WORK_FOLDER, INDEX_CACHE_FILE_NAME)) as idx_cache_file:
             idx_cache_list = idx_cache_file.readlines()
         print("Index cache was successfully open")
-        self.file_contents = self.DeserializedLines(idx_cache_list)
+        self.text_list_contents = self.DeserializedLines(idx_cache_list, self.Deserialization)
         print("Deserialization complete")
         return True
 
@@ -233,31 +248,15 @@ class StrIndex(Paddable, TextView):
         print("Index cache was created")
         return True
 
-    class DeserializedLines:
-        class DeserializedLine:
-            def __init__(self, input_line):
-                input_line = input_line.strip()
-                splt_ln = input_line.split(":")
-                self.path = splt_ln[0]
-                self.asmaddr = splt_ln[1]
+    class Deserialization:
+        def __init__(self, input_line):
+            input_line = input_line.strip()
+            splt_ln = input_line.split(":")
+            self.path = splt_ln[0]
+            self.asmaddr = splt_ln[1]
 
-                idx_quot = input_line.find('"')
-                self.line = input_line[idx_quot+1:-1]
-
-        def __init__(self, input_lines):
-            self.lnlist = []
-            for line in input_lines:
-                self.lnlist.append(self.DeserializedLine(line))
-            self.edited_lines = set()
-
-        def __getitem__(self, key):
-            return self.lnlist[key].line
-
-        def __setitem__(self, key, value):
-            self.lnlist[key].line = value
-
-        def __len__(self):
-            return len(self.lnlist)
+            idx_quot = input_line.find('"')
+            self.line = input_line[idx_quot+1:-1]
 
 def edit():
     print("수정할 줄 번호를 입력해 주세요")
