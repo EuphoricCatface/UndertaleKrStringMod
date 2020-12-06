@@ -6,11 +6,9 @@ from sys import stdin
 import re
 import datetime
 
-input_file_name="./strings.json"
-input_file_json: json
-input_file_json = None
-user_cmd=str()
-output_file_name="./strings_out{}.json"
+INPUT_FILE_NAME="./strings.json"
+INPUT_FILE_JSON: json
+INPUT_FILE_JSON = None
 
 padding_filtered = set()
 
@@ -28,7 +26,7 @@ def input_cmd_parser(input_str):
         raise SyntaxError
 
 def input_decimal_parser(input_str):
-    if re.search("[a-zA-Z]", input_str) != None:
+    if re.search("[a-zA-Z]", input_str) is not None:
         raise SyntaxError
     input_str_lst = None
     if "-" in input_str:
@@ -44,26 +42,26 @@ def input_decimal_parser(input_str):
         start = int(input_str_lst[0])
         offset = int(input_str_lst[1])
         end = start + offset
-    if input_str_lst != None:
+    if input_str_lst is not None:
         return range(start, end)
     return [int(input_str)]
 
 def hangul_padding_toggle():
     if len(padding_filtered) == 0:
         print("공백 필터링 적용 중...")
-        for i in range(len(input_file_json)):
-            unpadded = hangul_pad_del(input_file_json[i])
+        for i in range(len(INPUT_FILE_JSON)):
+            unpadded = hangul_pad_del(INPUT_FILE_JSON[i])
             if unpadded == None:
-                continue;
-            input_file_json[i] = unpadded
+                continue
+            INPUT_FILE_JSON[i] = unpadded
             padding_filtered.add(i)
     else:
         print("공백 필터링 해제 중...")
         padded_list = list(padding_filtered)
         padded_list.sort()
         for i in padded_list:
-            padded = hangul_pad_add(input_file_json[i])
-            input_file_json[i] = padded
+            padded = hangul_pad_add(INPUT_FILE_JSON[i])
+            INPUT_FILE_JSON[i] = padded
             padding_filtered.remove(i)
 
 def hangul_pad_del(input_line):
@@ -88,12 +86,12 @@ def hangul_pad_del(input_line):
             continue
         new_chr = input_line[j]
         no_pad_buf += new_chr
-        
+
         if unicodedata.category(new_chr) != "Lo":
             continue
 
         has_lo = True
-        
+
         if j+1 == len(input_line):
             # lo_but_no_sp = True
             # we have already deleted all trailing space
@@ -131,7 +129,7 @@ def hangul_pad_add(input_line):
         padded_buf += new_chr
         if unicodedata.category(new_chr) != "Lo":
             continue
-        
+
         if j+1 == len(input_line):
             break
 
@@ -161,7 +159,7 @@ def print_help():
     print("==== ====== ====")
 
 def print_line(linenum):
-    line_content = input_file_json[linenum]
+    line_content = INPUT_FILE_JSON[linenum]
     if len(padding_filtered) == 0:
         print(linenum, line_content)
     else:
@@ -176,8 +174,8 @@ def search():
     print(">> ", end="", flush=True)
     input_str = stdin.readline()
     input_str = input_str[:-1] # assuming \n
-    for i in range(len(input_file_json)):
-        if input_str in input_file_json[i]:
+    for i in range(len(INPUT_FILE_JSON)):
+        if input_str in INPUT_FILE_JSON[i]:
             print_line(i)
 
 def edit():
@@ -185,7 +183,7 @@ def edit():
     print(">> ", end="", flush=True)
     input_str = stdin.readline()
     input_str = input_str[:-1] # assuming \n
-    if input_str.isdecimal() != True:
+    if not input_str.isdecimal():
         raise SyntaxError
     linenum = int(input_str)
     print("수정할 문자열을 입력해 주세요")
@@ -193,39 +191,39 @@ def edit():
     print(">> ", end="", flush=True)
     input_str = stdin.readline()
     input_str = input_str[:-1] # assuming \n
-    input_file_json[linenum] = input_str
+    INPUT_FILE_JSON[linenum] = input_str
     print("수정 완료:")
     print_line(linenum)
 
 
-with open(input_file_name) as input_file:
-#    input_file_contents = input_file.read()
-    print("strings.json was successfully open")
-    input_file_json = json.load(input_file)
-    print("json successfully parsed")
+if __name__ == '__main__':
+    with open(INPUT_FILE_NAME) as input_file:
+        # input_file_contents = input_file.read()
+        print("strings.json was successfully open")
+        INPUT_FILE_JSON = json.load(input_file)
+        print("json successfully parsed")
 
-print_help()
-while 1:
-    # start of input
-    print("> ", end="", flush=True)
-    input_str = stdin.readline()
-    # end of input
-    try:
-        if not input_str[0].isdecimal():
-            input_cmd_parser(input_str)
+    print_help()
+    while 1:
+        # start of input
+        print("> ", end="", flush=True)
+        main_cmd = stdin.readline()
+        # end of input
+        try:
+            if not main_cmd[0].isdecimal():
+                input_cmd_parser(main_cmd)
+                continue
+            read_list = input_decimal_parser(main_cmd)
+        except (SyntaxError, ValueError):
+            print("알 수 없는 명령어")
             continue
-        read_list = input_decimal_parser(input_str)
-    except (SyntaxError, ValueError):
-        print("알 수 없는 명령어")
-        continue
-    except IndexError:
-        print("범위 초과")
-        continue
+        except IndexError:
+            print("범위 초과")
+            continue
 
-    try:
-        for i in read_list:
-            print_line(i)
-    except (IndexError, ValueError):
-        print("범위 초과")
-        continue
-
+        try:
+            for main_prn_ln in read_list:
+                print_line(main_prn_ln)
+        except (IndexError, ValueError):
+            print("범위 초과")
+            continue
