@@ -5,10 +5,12 @@ import unicodedata
 from sys import stdin
 import re
 import datetime
+import os
 
-INPUT_FILE_NAME="./strings.json"
-INPUT_FILE_JSON: json
-INPUT_FILE_JSON = None
+WORK_FOLDER="./UTKRStrMod"
+INDEX_CACHE_FILE_NAME="str_cache.txt"
+JSON_FILE_NAME="strings.json"
+FILE_CONTENTS = None
 
 padding_filtered = set()
 
@@ -20,6 +22,9 @@ def input_cmd_parser(input_str):
         hangul_padding_toggle()
     elif cmd == "s":
         search()
+    elif cmd == "i":
+        create_index_cache()
+        open_index_cache()
     elif cmd == "q":
         exit()
     else:
@@ -49,19 +54,19 @@ def input_decimal_parser(input_str):
 def hangul_padding_toggle():
     if len(padding_filtered) == 0:
         print("공백 필터링 적용 중...")
-        for i in range(len(INPUT_FILE_JSON)):
-            unpadded = hangul_pad_del(INPUT_FILE_JSON[i])
+        for i in range(len(FILE_CONTENTS)):
+            unpadded = hangul_pad_del(FILE_CONTENTS[i])
             if unpadded == None:
                 continue
-            INPUT_FILE_JSON[i] = unpadded
+            FILE_CONTENTS[i] = unpadded
             padding_filtered.add(i)
     else:
         print("공백 필터링 해제 중...")
         padded_list = list(padding_filtered)
         padded_list.sort()
         for i in padded_list:
-            padded = hangul_pad_add(INPUT_FILE_JSON[i])
-            INPUT_FILE_JSON[i] = padded
+            padded = hangul_pad_add(FILE_CONTENTS[i])
+            FILE_CONTENTS[i] = padded
             padding_filtered.remove(i)
 
 def hangul_pad_del(input_line):
@@ -146,20 +151,20 @@ def print_help():
     print("==== 도움말 ====")
     print("* 스트링 출력: 읽고 싶은 번호 혹은 범위를 입력해 주세요")
     print("예시:")
-    print("> 80 (단일)")
-    print("> 10188 - 10241(시작 - 끝)")
-    print("> 10730, 10(시작, 열 갯수)")
+    print("> 16858 (단일)")
+    print("> 11890 - 11940(시작 - 끝)")
+    print("> 1010, 10(시작, 열 갯수)")
     print("공백 필터 여부, 스트링 번호, 스트링 순으로 출력됩니다.")
     print("")
     print("* 다른 명령어:")
     print("p: 한글패치 정렬용 공백 필터링 토글")
-    print("s: 검색")
+    print("s: 검색, i: 인덱스 생성/새로고침")
     print("h: 도움말, q: 종료")
     print("")
     print("==== ====== ====")
 
 def print_line(linenum):
-    line_content = INPUT_FILE_JSON[linenum]
+    line_content = FILE_CONTENTS[linenum]
     if len(padding_filtered) == 0:
         print(linenum, line_content)
     else:
@@ -174,8 +179,8 @@ def search():
     print(">> ", end="", flush=True)
     input_str = stdin.readline()
     input_str = input_str[:-1] # assuming \n
-    for i in range(len(INPUT_FILE_JSON)):
-        if input_str in INPUT_FILE_JSON[i]:
+    for i in range(len(FILE_CONTENTS)):
+        if input_str in FILE_CONTENTS[i]:
             print_line(i)
 
 def edit():
@@ -191,17 +196,74 @@ def edit():
     print(">> ", end="", flush=True)
     input_str = stdin.readline()
     input_str = input_str[:-1] # assuming \n
-    INPUT_FILE_JSON[linenum] = input_str
+    FILE_CONTENTS[linenum] = input_str
     print("수정 완료:")
     print_line(linenum)
 
+def create_index_cache():
+    if not os.path.isdir("./code"):
+        print("ERROR: code folder was not found")
+        return False
+
+    # subprocess is probably better but whatever ¯\_(ツ)_/¯
+    if not os.path.isdir(WORK_FOLDER):
+        os.mkdir(WORK_FOLDER)
+    print("Creating index cache...")
+    os.system('grep -r ./code/ -e "push\.cst string" > {}/{}'
+            .format(WORK_FOLDER, INDEX_CACHE_FILE_NAME))
+    print("Index cache was created")
+
+def open_index_cache():
+    cache_file_path = WORK_FOLDER + "/" + INDEX_CACHE_FILE_NAME
+    if not os.path.isfile(cache_file_path):
+        return False
+    with open('{}/{}'.format(WORK_FOLDER, INDEX_CACHE_FILE_NAME)) as idx_cache_file:
+        idx_cache_list = idx_cache_file.readlines()
+    print("Index cache was successfully open")
+    global FILE_CONTENTS
+    FILE_CONTENTS = deserialized_lines(idx_cache_list)
+    print("Deserialization complete")
+    return True
+
+class deserialized_lines:
+    class deserialized_line:
+        def __init__(self, input_line):
+            input_line = input_line.strip()
+            splt_ln = input_line.split(":")
+            self.path = splt_ln[0]
+            self.asmaddr = splt_ln[1]
+
+            idx_quot = input_line.find('"')
+            self.line = input_line[idx_quot+1:-1]
+
+    def __init__(self, input_lines):
+        self.lnlist = []
+        for ln in input_lines:
+            self.lnlist.append(self.deserialized_line(ln))
+        self.edited_lines = set()
+
+    def __getitem__(self, key):
+        return self.lnlist[key].line
+
+    def __setitem__(self, key, value):
+        self.lnlist[key].line = value
+
+    def __len__(self):
+        return len(self.lnlist)
+
 
 if __name__ == '__main__':
-    with open(INPUT_FILE_NAME) as input_file:
-        # input_file_contents = input_file.read()
-        print("strings.json was successfully open")
-        INPUT_FILE_JSON = json.load(input_file)
-        print("json successfully parsed")
+    if not open_index_cache():
+        print("Index cache was not found")
+        print("Opening {} instead".format(JSON_FILE_NAME))
+        if not os.path.isfile(JSON_FILE_NAME):
+            print("FATAL: {} was not found too".format(JSON_FILE_NAME))
+            exit(-1)
+        with open(JSON_FILE_NAME) as input_file:
+            # input_file_contents = input_file.read()
+            print("{} was successfully open".format(JSON_FILE_NAME))
+            FILE_CONTENTS = json.load(input_file)
+            print("json successfully parsed")
 
     print_help()
     while 1:
