@@ -20,17 +20,8 @@ def input_cmd_parser(input_str):
         print_help()
     elif cmd == "p":
         hangul_padding_toggle()
-    elif cmd == "w":
-        if len(padding_filtered) != 0:
-            print("공백 필터링 모드입니다. 재삽입합니다.")
-            hangul_padding_toggle()
-        print("저장하는 중...")
-        with open(output_file_name.format(datetime.datetime.now().isoformat()), 'w') as output_file:
-            json.dump(input_file_json, output_file)
     elif cmd == "s":
         search()
-    elif cmd == "e":
-        edit()
     elif cmd == "q":
         exit()
     else:
@@ -164,8 +155,7 @@ def print_help():
     print("")
     print("* 다른 명령어:")
     print("p: 한글패치 정렬용 공백 필터링 토글")
-    print("s: 검색, e: 수정")
-    print("w: 현재까지 수정사항 strings_out[현재일시].json에 저장")
+    print("s: 검색")
     print("h: 도움말, q: 종료")
     print("")
     print("==== ====== ====")
