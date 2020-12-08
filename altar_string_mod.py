@@ -9,6 +9,7 @@ import re
 import os
 
 WORK_FOLDER = "./UTKRStrMod"
+BACKUP_FOLDER = "backup"
 INDEX_CACHE_FILE_NAME = "str_cache.txt"
 JSON_FILE_NAME = "strings.json"
 
@@ -351,15 +352,18 @@ class StrAsm(TextListCommon):
         self.modified = True
 
     def write(self):
-        backup_path = self.asm_path + ".bak"
-        if os.path.isfile(backup_path):
+        backup_filename = os.path.split(self.asm_path)[1] + ".bak"
+        backup_dir = os.path.join(WORK_FOLDER, BACKUP_FOLDER)
+        if os.path.isfile(os.path.join(backup_dir, backup_filename)):
             suffix = 0
-            backup_path = backup_path + ".{}"
-            while os.path.isfile(backup_path.format(suffix)):
+            while os.path.isfile(os.path.join(backup_dir, backup_filename + "." + str(suffix))):
                 suffix += 1
-            backup_path = backup_path.format(suffix)
+            backup_filename = backup_filename + "." + str(suffix)
+        backup_path = os.path.join(backup_dir, backup_filename)
 
         print("Creating a backup as {}...".format(backup_path))
+        if not os.path.isdir(backup_dir):
+            os.mkdir(backup_dir)
         shutil.copyfile(self.asm_path, backup_path)
 
         print("현재 열려 있는 {} 파일을 저장합니다...".format(self.asm_path))
