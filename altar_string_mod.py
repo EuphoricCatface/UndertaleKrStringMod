@@ -7,9 +7,11 @@ import unicodedata
 import sys
 import re
 import os
+import datetime
 
 WORK_FOLDER = "./UTKRStrMod"
 BACKUP_FOLDER = "backup"
+DUMP_FOLDER = "dump"
 INDEX_CACHE_FILE_NAME = "str_cache.txt"
 JSON_FILE_NAME = "strings.json"
 
@@ -27,6 +29,7 @@ def print_help():
     print("공백 필터 여부, 스트링 번호, 스트링 순으로 출력됩니다.")
     print("")
     print("* 다른 명령어:")
+    print("d: 화면 출력 형식 그대로 덤프")
     print("p: 한글패치 정렬용 공백 필터링 토글")
     print("s: 검색, r: 인덱스 생성/새로고침")
     if ASM_FILE is None:
@@ -55,6 +58,8 @@ def parse_input_cmd(input_str):
     elif cmd == "r":
         INDEX_FILE.create_index_cache()
         INDEX_FILE.open_index_cache()
+    elif cmd == "d":
+        FILE_REF.print_dump()
     else:
         cmd_match_fail += 1
 
@@ -213,16 +218,37 @@ class TextListCommon:
         padded_str_list.append(trail_sp)
         return str.join("", padded_str_list)
 
-    def print_line(self, linenum):
+    def print_line(self, linenum, file=sys.stdout):
         line_content = self.text_list_contents[linenum]
         if len(self.padding_filtered) == 0:
-            print("---", linenum, line_content)
+            print("---", linenum, line_content, file=file)
         else:
             flag = linenum in self.padding_filtered
             if flag:
-                print("[*]", linenum, line_content)
+                print("[*]", linenum, line_content, file=file)
             else:
-                print("[ ]", linenum, line_content)
+                print("[ ]", linenum, line_content, file=file)
+
+    def print_dump(self):
+        dump_dir = os.path.join(WORK_FOLDER, DUMP_FOLDER)
+        if not os.path.isdir(dump_dir):
+            os.mkdir(dump_dir)
+
+        if ASM_FILE is None:
+            current_filename = "INDEX"
+        else:
+            current_filename = os.path.split(self.asm_path)[1]
+        dump_filename = "DUMP_{}_{}.txt".format(
+                current_filename,
+                datetime.datetime.now().replace(microsecond=0).isoformat()
+        )
+
+        dump_path = os.path.join(dump_dir, dump_filename)
+        print("{}에 덤프 파일을 생성합니다...".format(dump_path))
+
+        with open(dump_path, "w") as dump_file:
+            for line in enumerate(self.text_list_contents):
+                self.print_line(line[0], file=dump_file)
 
     def search(self):
         print("검색할 문자열을 입력해 주세요")
