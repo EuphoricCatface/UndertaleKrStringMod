@@ -212,7 +212,7 @@ class TextListCommon:
     def print_line(self, linenum):
         line_content = self.text_list_contents[linenum]
         if len(self.padding_filtered) == 0:
-            print(linenum, line_content)
+            print("---", linenum, line_content)
         else:
             flag = linenum in self.padding_filtered
             if flag:
