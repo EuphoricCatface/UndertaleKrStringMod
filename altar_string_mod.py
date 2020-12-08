@@ -1,5 +1,6 @@
 #! /usr/bin/python
 
+import shutil
 import readline
 import json
 import unicodedata
@@ -31,8 +32,7 @@ def print_help():
         print("o: 수정 모드 진입")
     else:
         print("c: 수정 모드 종료")
-        print("e: 스트링 수정")
-        # print("w: 저장, e: 스트링 수정")
+        print("w: 저장, e: 스트링 수정")
     print("h: 도움말, q: 종료")
     print("")
     print("==== ====== ====")
@@ -72,6 +72,8 @@ def parse_input_cmd(input_str):
             ASM_FILE = None
         elif cmd == "e":
             ASM_FILE.edit()
+        elif cmd == "w":
+            ASM_FILE.write()
         else:
             cmd_match_fail += 1
 
@@ -337,6 +339,41 @@ class StrAsm(TextListCommon):
         self.text_list_contents[linenum] = input_str
         print("수정 완료:")
         self.print_line(linenum)
+
+    def write(self):
+        backup_path = self.asm_path + ".bak"
+        print("Creating a backup as {}...".format(backup_path))
+        shutil.copyfile(self.asm_path, backup_path)
+
+        print("현재 열려 있는 {} 파일을 저장합니다...".format(self.asm_path))
+        if len(self.padding_filtered):
+            print("정렬 공백 필터 상태입니다. 해제합니다...")
+            self.hangul_padding_toggle()
+
+        print("Serializing...")
+        for line_pair in enumerate(self.string_line_num_list):
+            src = self.text_list_contents.lnlist[line_pair[0]]
+            # dst = self.asm_code_lines[line_pair[1]]
+
+            print("DEBUG:")
+            print("Before substitution:")
+            for i in range(line_pair[1] - 1, line_pair[1] + 2):
+                print(self.asm_code_lines[i])
+                
+            serialized_line = '{}: push.cst string "{}"\n'.format(src["asmaddr"], src["line"])
+            self.asm_code_lines[line_pair[1]] = serialized_line
+            
+            print("DEBUG:")
+            print("serialized_line:", serialized_line)
+            for i in range(line_pair[1] - 1, line_pair[1] + 2):
+                print(self.asm_code_lines[i])
+
+        print("Writing to disk...")
+        with open(self.asm_path, "w") as write_file:
+            write_file.writelines(self.asm_code_lines)
+
+        print("저장 완료.")
+        print("인덱스 캐시는 자동 갱신되지 않습니다. 직접 새로고침 해 주세요.")
 
     @staticmethod
     def deserialization(input_line):
