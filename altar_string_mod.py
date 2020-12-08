@@ -389,11 +389,14 @@ if __name__ == '__main__':
 
     print_help()
     while 1:
-        FILE_REF = ASM_FILE \
-                if ASM_FILE is not None \
-                else INDEX_FILE
+        if ASM_FILE is None:
+            FILE_REF = INDEX_FILE
+            prompt_prefix = "INDEX"
+        else:
+            FILE_REF = ASM_FILE
+            prompt_prefix = "ASM"
 
-        main_cmd = input("> ")
+        main_cmd = input("{}> ".format(prompt_prefix))
         try:
             if not main_cmd[0].isdecimal():
                 parse_input_cmd(main_cmd)
