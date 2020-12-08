@@ -40,7 +40,10 @@ def print_help():
 def parse_input_cmd(input_str):
     global ASM_FILE
 
+    cmd_match_fail = 0
     cmd = input_str[0]
+    
+    # common cmd
     if cmd == "h":
         print_help()
     elif cmd == "p":
@@ -50,20 +53,30 @@ def parse_input_cmd(input_str):
     elif cmd == "i":
         INDEX_FILE.create_index_cache()
         INDEX_FILE.open_index_cache()
-    elif cmd == "q":
-        sys.exit()
-    elif cmd == "o":
-        if ASM_FILE is not None:
-            raise SyntaxError
-        ASM_FILE = INDEX_FILE.open_asm_file()
-    elif cmd == "c":
-        if ASM_FILE is None:
-            raise SyntaxError
-        print("현재 열려 있는 {} 파일을 종료합니다...".format(ASM_FILE.asm_path))
-        ASM_FILE = None
-    elif cmd == "e":
-        ASM_FILE.edit()
     else:
+        cmd_match_fail += 1
+
+    # index mode cmd
+    if ASM_FILE is None:
+        if cmd == "q":
+            sys.exit()
+        elif cmd == "o":
+            ASM_FILE = INDEX_FILE.open_asm_file()
+        else:
+            cmd_match_fail += 1
+
+    # asm mode cmd
+    else:
+        if cmd == "c":
+            print("현재 열려 있는 {} 파일을 종료합니다...".format(ASM_FILE.asm_path))
+            ASM_FILE = None
+        elif cmd == "e":
+            ASM_FILE.edit()
+        else:
+            cmd_match_fail += 1
+
+    if cmd_match_fail == 2:
+        # There was no action match
         raise SyntaxError
 
 def parse_input_decimal(input_str):
