@@ -31,11 +31,12 @@ def print_help():
     print("s: 검색, r: 인덱스 생성/새로고침")
     if ASM_FILE is None:
         print("o: 수정 모드 진입")
+        print("q: 종료")
     else:
+        print("e: 스트링 수정, w: 저장")
         print("c: 수정 모드 종료")
-        print("w: 저장, e: 스트링 수정")
-    print("h: 도움말, q: 종료")
     print("")
+    print("h: 도움말")
     print("==== ====== ====")
 
 def parse_input_cmd(input_str):
