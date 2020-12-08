@@ -36,6 +36,7 @@ def print_help():
     print("==== ====== ====")
 
 def parse_input_cmd(input_str):
+    global ASM_FILE
 
     cmd = input_str[0]
     if cmd == "h":
@@ -50,7 +51,8 @@ def parse_input_cmd(input_str):
     elif cmd == "q":
         sys.exit()
     elif cmd == "o":
-        INDEX_FILE.open_asm_file()
+        if ASM_FILE is not None:
+        ASM_FILE = INDEX_FILE.open_asm_file()
     else:
         raise SyntaxError
 
@@ -266,8 +268,7 @@ class StrIndex(TextListCommon):
         self.print_line(linenum)
         path = self.text_list_contents.lnlist[linenum]["path"]
         print("위 줄이 포함된 {}파일을 수정합니다...".format(path))
-        global ASM_FILE
-        ASM_FILE = StrAsm(path)
+        return StrAsm(path)
 
     @staticmethod
     def deserialization(input_line):
