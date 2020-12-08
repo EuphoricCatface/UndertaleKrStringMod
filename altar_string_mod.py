@@ -30,8 +30,8 @@ def print_help():
         print("o: 수정 모드 진입")
     else:
         print("c: 수정 모드 종료")
-        # print("w: 저장, c: 수정 모드 종료")
-        pass
+        print("e: 스트링 수정")
+        # print("w: 저장, e: 스트링 수정")
     print("h: 도움말, q: 종료")
     print("")
     print("==== ====== ====")
@@ -60,6 +60,8 @@ def parse_input_cmd(input_str):
             raise SyntaxError
         print("현재 열려 있는 {} 파일을 종료합니다...".format(ASM_FILE.asm_path))
         ASM_FILE = None
+    elif cmd == "e":
+        ASM_FILE.edit()
     else:
         raise SyntaxError
 
@@ -309,18 +311,18 @@ class StrAsm(TextListCommon):
         self.text_list_contents = self.DeserializedLines(lines_to_serialize, self.deserialization)
         print("Deserialization complete")
 
-#    def edit():
-#        print("수정할 줄 번호를 입력해 주세요")
-#        input_str = input(">> ")
-#        if not input_str.isdecimal():
-#            raise SyntaxError
-#        linenum = int(input_str)
-#        print("수정할 문자열을 입력해 주세요")
-#        print_line(linenum)
-#        input_str = input(">> ")
-#        self.text_list_contents[linenum] = input_str
-#        print("수정 완료:")
-#        print_line(linenum)
+    def edit(self):
+        print("수정할 줄 번호를 입력해 주세요")
+        input_str = input(">> ")
+        if not input_str.isdecimal():
+            raise SyntaxError
+        linenum = int(input_str)
+        print("수정할 문자열을 입력해 주세요")
+        self.print_line(linenum)
+        input_str = input(">> ")
+        self.text_list_contents[linenum] = input_str
+        print("수정 완료:")
+        self.print_line(linenum)
 
     @staticmethod
     def deserialization(input_line):
