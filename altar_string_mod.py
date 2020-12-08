@@ -342,6 +342,13 @@ class StrAsm(TextListCommon):
 
     def write(self):
         backup_path = self.asm_path + ".bak"
+        if os.path.isfile(backup_path):
+            suffix = 0
+            backup_path = backup_path + ".{}"
+            while os.path.isfile(backup_path.format(suffix)):
+                suffix += 1
+            backup_path = backup_path.format(suffix)
+
         print("Creating a backup as {}...".format(backup_path))
         shutil.copyfile(self.asm_path, backup_path)
 
