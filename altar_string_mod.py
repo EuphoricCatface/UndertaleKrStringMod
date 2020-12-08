@@ -285,7 +285,7 @@ class StrIndex(TextListCommon):
 
     def open_asm_file(self):
         # TODO: Error handling when current index file is json
-        print("수정할 줄 번호를 입력하세요")
+        print("수정 모드로 진입할 줄 번호를 입력하세요")
         input_str = input(">> ")
         if not input_str.isdecimal():
             raise SyntaxError
