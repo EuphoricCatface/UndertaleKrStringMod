@@ -58,6 +58,7 @@ def parse_input_cmd(input_str):
     elif cmd == "c":
         if ASM_FILE is None:
             raise SyntaxError
+        print("현재 열려 있는 {} 파일을 종료합니다...".format(ASM_FILE.asm_path))
         ASM_FILE = None
     else:
         raise SyntaxError
@@ -273,7 +274,7 @@ class StrIndex(TextListCommon):
         linenum = int(input_str)
         self.print_line(linenum)
         path = self.text_list_contents.lnlist[linenum]["path"]
-        print("위 줄이 포함된 {}파일을 수정합니다...".format(path))
+        print("위 줄이 포함된 {} 파일을 수정합니다...".format(path))
         return StrAsm(path)
 
     @staticmethod
