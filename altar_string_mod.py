@@ -12,6 +12,7 @@ JSON_FILE_NAME = "strings.json"
 
 INDEX_FILE = None
 ASM_FILE = None
+FILE_REF = None
 
 def print_help():
     print("==== 도움말 ====")
@@ -35,17 +36,14 @@ def print_help():
     print("==== ====== ====")
 
 def parse_input_cmd(input_str):
-    ref = ASM_FILE \
-            if ASM_FILE is not None \
-            else INDEX_FILE
 
     cmd = input_str[0]
     if cmd == "h":
         print_help()
     elif cmd == "p":
-        ref.hangul_padding_toggle()
+        FILE_REF.hangul_padding_toggle()
     elif cmd == "s":
-        ref.search()
+        FILE_REF.search()
     elif cmd == "i":
         INDEX_FILE.create_index_cache()
         INDEX_FILE.open_index_cache()
@@ -67,7 +65,7 @@ def parse_input_decimal(input_str):
         start = int(input_str_lst[0])
         end = int(input_str_lst[1]) + 1
         return range(start, end)
-    elif "," in input_str:
+    if "," in input_str:
         input_str_lst = input_str.split(",")
         if len(input_str_lst) != 2:
             raise SyntaxError
@@ -75,12 +73,13 @@ def parse_input_decimal(input_str):
         offset = int(input_str_lst[1])
         end = start + offset
         return range(start, end)
-    else:
-        return [int(input_str)]
+
+    return [int(input_str)]
 
 
 class TextListCommon:
     def __init__(self):
+        self.text_list_contents: self.DeserializedLines
         self.text_list_contents = None
         self.padding_filtered = set()
 
@@ -269,7 +268,8 @@ class StrIndex(TextListCommon):
         global ASM_FILE
         ASM_FILE = StrAsm(path)
 
-    def deserialization(self, input_line):
+    @staticmethod
+    def deserialization(input_line):
         rtn_dict = {}
         input_line = input_line.strip()
         splt_ln = input_line.split(":")
@@ -300,20 +300,21 @@ class StrAsm(TextListCommon):
         self.text_list_contents = self.DeserializedLines(lines_to_serialize, self.deserialization)
         print("Deserialization complete")
 
-    def edit():
-        print("수정할 줄 번호를 입력해 주세요")
-        input_str = input(">> ")
-        if not input_str.isdecimal():
-            raise SyntaxError
-        linenum = int(input_str)
-        print("수정할 문자열을 입력해 주세요")
-        print_line(linenum)
-        input_str = input(">> ")
-        self.text_list_contents[linenum] = input_str
-        print("수정 완료:")
-        print_line(linenum)
+#    def edit():
+#        print("수정할 줄 번호를 입력해 주세요")
+#        input_str = input(">> ")
+#        if not input_str.isdecimal():
+#            raise SyntaxError
+#        linenum = int(input_str)
+#        print("수정할 문자열을 입력해 주세요")
+#        print_line(linenum)
+#        input_str = input(">> ")
+#        self.text_list_contents[linenum] = input_str
+#        print("수정 완료:")
+#        print_line(linenum)
 
-    def deserialization(self, input_line):
+    @staticmethod
+    def deserialization(input_line):
         rtn_dict = {}
         input_line = input_line.strip()
         splt_ln = input_line.split(":")
@@ -329,7 +330,7 @@ if __name__ == '__main__':
 
     print_help()
     while 1:
-        ref = ASM_FILE \
+        FILE_REF = ASM_FILE \
                 if ASM_FILE is not None \
                 else INDEX_FILE
 
@@ -342,7 +343,7 @@ if __name__ == '__main__':
             read_list = parse_input_decimal(main_cmd)
 
             for main_prn_ln in read_list:
-                ref.print_line(main_prn_ln)
+                FILE_REF.print_line(main_prn_ln)
         except SyntaxError:
             print("알 수 없는 명령어")
         except ValueError:
