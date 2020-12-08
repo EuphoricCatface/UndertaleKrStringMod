@@ -362,19 +362,9 @@ class StrAsm(TextListCommon):
             src = self.text_list_contents.lnlist[line_pair[0]]
             # dst = self.asm_code_lines[line_pair[1]]
 
-            print("DEBUG:")
-            print("Before substitution:")
-            for i in range(line_pair[1] - 1, line_pair[1] + 2):
-                print(self.asm_code_lines[i])
-                
             serialized_line = '{}: push.cst string "{}"\n'.format(src["asmaddr"], src["line"])
             self.asm_code_lines[line_pair[1]] = serialized_line
             
-            print("DEBUG:")
-            print("serialized_line:", serialized_line)
-            for i in range(line_pair[1] - 1, line_pair[1] + 2):
-                print(self.asm_code_lines[i])
-
         print("Writing to disk...")
         with open(self.asm_path, "w") as write_file:
             write_file.writelines(self.asm_code_lines)
