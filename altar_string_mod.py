@@ -68,6 +68,8 @@ def parse_input_cmd(input_str):
     # asm mode cmd
     else:
         if cmd == "c":
+            if not ASM_FILE.close_confirm():
+                return
             print("현재 열려 있는 {} 파일을 종료합니다...".format(ASM_FILE.asm_path))
             ASM_FILE = None
         elif cmd == "e":
@@ -315,6 +317,7 @@ class StrAsm(TextListCommon):
         super().__init__()
         self.asm_path = path
         self.string_line_num_list = list()
+        self.modified = False
 
         lines_to_serialize = list()
         with open(self.asm_path) as f:
@@ -345,6 +348,7 @@ class StrAsm(TextListCommon):
         self.text_list_contents[linenum] = input_str
         print("수정 완료:")
         self.print_line(linenum)
+        self.modified = True
 
     def write(self):
         backup_path = self.asm_path + ".bak"
@@ -377,6 +381,19 @@ class StrAsm(TextListCommon):
 
         print("저장 완료.")
         print("인덱스 캐시는 자동 갱신되지 않습니다. 직접 새로고침 해 주세요.")
+        self.modified = False
+
+    def close_confirm(self):
+        if self.modified == False:
+            return True
+
+        print("수정사항이 저장되지 않을 수 있습니다.")
+        print("정말로 닫으시려면 >Yes<를 입력해 주세요.")
+        input_str = input(">> ")
+        if input_str != "Yes":
+            return False
+
+        return True
 
     @staticmethod
     def deserialization(input_line):
@@ -400,7 +417,10 @@ if __name__ == '__main__':
             prompt_prefix = "INDEX"
         else:
             FILE_REF = ASM_FILE
-            prompt_prefix = "ASM"
+            if ASM_FILE.modified:
+                prompt_prefix = "* ASM"
+            else:
+                prompt_prefix = "  ASM"
 
         main_cmd = input("{}> ".format(prompt_prefix))
         try:
