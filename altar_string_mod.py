@@ -1,5 +1,6 @@
 #! /usr/bin/python
 
+import readline
 import json
 import unicodedata
 import sys
