@@ -284,8 +284,8 @@ class StrIndex(TextListCommon):
         if not os.path.isdir(WORK_FOLDER):
             os.mkdir(WORK_FOLDER)
         print("Creating index cache...")
-        os.system('grep -r ./code/ -e "push\\.cst string" > {}'
-                .format(self.cache_path))
+        os.system('grep -r ./code/ -e "^0x[0-9A-F]*: push\\.cst string" > '
+                + self.cache_path)
         print("Index cache was created")
         return True
 
