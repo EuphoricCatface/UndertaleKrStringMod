@@ -27,7 +27,7 @@ def print_help():
     print("")
     print("* 다른 명령어:")
     print("p: 한글패치 정렬용 공백 필터링 토글")
-    print("s: 검색, i: 인덱스 생성/새로고침")
+    print("s: 검색, r: 인덱스 생성/새로고침")
     if ASM_FILE is None:
         print("o: 수정 모드 진입")
     else:
@@ -50,7 +50,7 @@ def parse_input_cmd(input_str):
         FILE_REF.hangul_padding_toggle()
     elif cmd == "s":
         FILE_REF.search()
-    elif cmd == "i":
+    elif cmd == "r":
         INDEX_FILE.create_index_cache()
         INDEX_FILE.open_index_cache()
     else:
