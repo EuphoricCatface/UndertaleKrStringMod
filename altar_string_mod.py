@@ -29,6 +29,7 @@ def print_help():
     if ASM_FILE is None:
         print("o: 수정 모드 진입")
     else:
+        print("c: 수정 모드 종료")
         # print("w: 저장, c: 수정 모드 종료")
         pass
     print("h: 도움말, q: 종료")
@@ -52,7 +53,12 @@ def parse_input_cmd(input_str):
         sys.exit()
     elif cmd == "o":
         if ASM_FILE is not None:
+            raise SyntaxError
         ASM_FILE = INDEX_FILE.open_asm_file()
+    elif cmd == "c":
+        if ASM_FILE is None:
+            raise SyntaxError
+        ASM_FILE = None
     else:
         raise SyntaxError
 
