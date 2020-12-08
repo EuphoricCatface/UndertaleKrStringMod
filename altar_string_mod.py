@@ -222,7 +222,10 @@ class TextListCommon:
 
     def search(self):
         print("검색할 문자열을 입력해 주세요")
+        print("(빈 입력 = 취소)")
         input_str = input(">> ")
+        if input_str == "":
+            return
         for i in range(len(self.text_list_contents)):
             if input_str in self.text_list_contents[i]:
                 self.print_line(i)
@@ -334,8 +337,11 @@ class StrAsm(TextListCommon):
             raise SyntaxError
         linenum = int(input_str)
         print("수정할 문자열을 입력해 주세요")
+        print("(빈 입력 = 취소)")
         self.print_line(linenum)
         input_str = input(">> ")
+        if(input_str == ""):
+            return
         self.text_list_contents[linenum] = input_str
         print("수정 완료:")
         self.print_line(linenum)
