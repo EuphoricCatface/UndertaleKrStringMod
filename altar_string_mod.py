@@ -1,32 +1,97 @@
 #! /usr/bin/python
 
+import shutil
+import readline
 import json
 import unicodedata
-from sys import stdin
+import sys
 import re
+import os
 import datetime
 
-INPUT_FILE_NAME="./strings.json"
-INPUT_FILE_JSON: json
-INPUT_FILE_JSON = None
+WORK_FOLDER = "./UTKRStrMod"
+BACKUP_FOLDER = "backup"
+DUMP_FOLDER = "dump"
+INDEX_CACHE_FILE_NAME = "str_cache.txt"
+JSON_FILE_NAME = "strings.json"
 
-padding_filtered = set()
+INDEX_FILE = None
+ASM_FILE = None
+FILE_REF = None
 
-def input_cmd_parser(input_str):
+def print_help():
+    print("==== 도움말 ====")
+    print("* 스트링 출력: 읽고 싶은 번호 혹은 범위를 입력해 주세요")
+    print("예시:")
+    print("> 16858 (단일)")
+    print("> 11890 - 11940 (시작 - 끝)")
+    print("> 1010, 10 (시작, 열 갯수)")
+    print("공백 필터 여부, 스트링 번호, 스트링 순으로 출력됩니다.")
+    print("")
+    print("* 다른 명령어:")
+    print("d: 화면 출력 형식 그대로 덤프")
+    print("p: 한글패치 정렬용 공백 필터링 토글")
+    print("s: 검색, r: 인덱스 생성/새로고침")
+    if ASM_FILE is None:
+        print("o: 수정 모드 진입")
+        print("q: 종료")
+    else:
+        print("e: 스트링 수정, w: 저장")
+        print("c: 수정 모드 종료")
+    print("")
+    print("h: 도움말")
+    print("==== ====== ====")
+
+def parse_input_cmd(input_str):
+    global ASM_FILE
+
+    cmd_match_fail = 0
     cmd = input_str[0]
+    
+    # common cmd
     if cmd == "h":
         print_help()
     elif cmd == "p":
-        hangul_padding_toggle()
+        FILE_REF.hangul_padding_toggle()
     elif cmd == "s":
-        search()
-    elif cmd == "q":
-        exit()
+        FILE_REF.search()
+    elif cmd == "r":
+        INDEX_FILE.create_index_cache()
+        INDEX_FILE.open_index_cache()
+    elif cmd == "d":
+        FILE_REF.print_dump()
     else:
+        cmd_match_fail += 1
+
+    # index mode cmd
+    if ASM_FILE is None:
+        if cmd == "q":
+            sys.exit()
+        elif cmd == "o":
+            ASM_FILE = INDEX_FILE.open_asm_file()
+        else:
+            cmd_match_fail += 1
+
+    # asm mode cmd
+    else:
+        if cmd == "c":
+            if not ASM_FILE.close_confirm():
+                return
+            print("현재 열려 있는 {} 파일을 종료합니다...".format(ASM_FILE.asm_path))
+            ASM_FILE = None
+        elif cmd == "e":
+            ASM_FILE.edit()
+        elif cmd == "w":
+            ASM_FILE.write()
+        else:
+            cmd_match_fail += 1
+
+    if cmd_match_fail == 2:
+        # There was no action match
         raise SyntaxError
 
-def input_decimal_parser(input_str):
-    if re.search("[a-zA-Z]", input_str) is not None:
+def parse_input_decimal(input_str):
+    if re.search("[a-zA-Z]", input_str):
         raise SyntaxError
     input_str_lst = None
     if "-" in input_str:
@@ -35,6 +100,7 @@ def input_decimal_parser(input_str):
             raise SyntaxError
         start = int(input_str_lst[0])
         end = int(input_str_lst[1]) + 1
+        return range(start, end)
     if "," in input_str:
         input_str_lst = input_str.split(",")
         if len(input_str_lst) != 2:
@@ -42,188 +108,364 @@ def input_decimal_parser(input_str):
         start = int(input_str_lst[0])
         offset = int(input_str_lst[1])
         end = start + offset
-    if input_str_lst is not None:
         return range(start, end)
+
     return [int(input_str)]
 
-def hangul_padding_toggle():
-    if len(padding_filtered) == 0:
-        print("공백 필터링 적용 중...")
-        for i in range(len(INPUT_FILE_JSON)):
-            unpadded = hangul_pad_del(INPUT_FILE_JSON[i])
-            if unpadded == None:
-                continue
-            INPUT_FILE_JSON[i] = unpadded
-            padding_filtered.add(i)
-    else:
-        print("공백 필터링 해제 중...")
-        padded_list = list(padding_filtered)
-        padded_list.sort()
-        for i in padded_list:
-            padded = hangul_pad_add(INPUT_FILE_JSON[i])
-            INPUT_FILE_JSON[i] = padded
-            padding_filtered.remove(i)
 
-def hangul_pad_del(input_line):
-    # returns None if the line doesn't seem to be padded
+class TextListCommon:
+    def __init__(self):
+        self.text_list_contents: self.DeserializedLines
+        self.text_list_contents = None
+        self.padding_filtered = set()
 
-    # Let's try preserving all trailing spaces
-    rstrip_len = len(input_line.rstrip())
-    trail_sp = input_line[rstrip_len:]
-
-    # testing if the string is padded - assuming every "Lo" is hangul
-    # 1. A row has to have at least one "Lo"
-    # 2. Every "Lo" has to be followed by space
-    has_lo = False
-    lo_but_no_sp = False
-    no_pad_buf = str()
-
-    skip_flag = False
-
-    for j in range(len(input_line)):
-        if skip_flag:
-            skip_flag = False
-            continue
-        new_chr = input_line[j]
-        no_pad_buf += new_chr
-
-        if unicodedata.category(new_chr) != "Lo":
-            continue
-
-        has_lo = True
-
-        if j+1 == len(input_line):
-            # lo_but_no_sp = True
-            # we have already deleted all trailing space
-            break
-
-        next_chr = input_line[j+1]
-        if next_chr != " ":
-            # & is linebreak, and appears right after "Lo" in padded
-            # We have to preserve this, while not messing up paddedness detection
-            if next_chr == "&":
-                continue
-            lo_but_no_sp = True
-            break
-
-        # Current chr is Lo, and next is (padding) space.
-        # We don't need to check the next, and also skip adding no_pad_buf
-        skip_flag = True
-
-    if has_lo == False:
-        return None
-    if lo_but_no_sp == True:
-        return None
-
-    return no_pad_buf + trail_sp
-
-def hangul_pad_add(input_line):
-    # Let's try preserving all trailing spaces
-    rstrip_len = len(input_line.rstrip())
-    trail_sp = input_line[rstrip_len:]
-
-    padded_buf = str()
-
-    for j in range(len(input_line)):
-        new_chr = input_line[j]
-        padded_buf += new_chr
-        if unicodedata.category(new_chr) != "Lo":
-            continue
-
-        if j+1 == len(input_line):
-            break
-
-        # No padding before linebreak(&)
-        if input_line[j+1] == "&":
-            continue
-
-        # Now probably good to pad
-        padded_buf += " "
-
-    return padded_buf + trail_sp
-
-def print_help():
-    print("==== 도움말 ====")
-    print("* 스트링 출력: 읽고 싶은 번호 혹은 범위를 입력해 주세요")
-    print("예시:")
-    print("> 80 (단일)")
-    print("> 10188 - 10241(시작 - 끝)")
-    print("> 10730, 10(시작, 열 갯수)")
-    print("공백 필터 여부, 스트링 번호, 스트링 순으로 출력됩니다.")
-    print("")
-    print("* 다른 명령어:")
-    print("p: 한글패치 정렬용 공백 필터링 토글")
-    print("s: 검색")
-    print("h: 도움말, q: 종료")
-    print("")
-    print("==== ====== ====")
-
-def print_line(linenum):
-    line_content = INPUT_FILE_JSON[linenum]
-    if len(padding_filtered) == 0:
-        print(linenum, line_content)
-    else:
-        flag = linenum in padding_filtered
-        if flag:
-            print("[*]", linenum, line_content)
+    def hangul_padding_toggle(self):
+        if len(self.padding_filtered) == 0:
+            print("공백 필터링 적용 중...")
+            for ln_pair in enumerate(self.text_list_contents):
+                unpadded = self.hangul_pad_del(ln_pair[1])
+                if unpadded is None:
+                    continue
+                self.text_list_contents[ln_pair[0]] = unpadded
+                self.padding_filtered.add(ln_pair[0])
         else:
-            print("[ ]", linenum, line_content)
+            print("공백 필터링 해제 중...")
+            padded_list = sorted(self.padding_filtered)
+            for i in padded_list:
+                padded = self.hangul_pad_add(self.text_list_contents[i])
+                self.text_list_contents[i] = padded
+                self.padding_filtered.remove(i)
 
-def search():
-    print("검색할 문자열을 입력해 주세요")
-    print(">> ", end="", flush=True)
-    input_str = stdin.readline()
-    input_str = input_str[:-1] # assuming \n
-    for i in range(len(INPUT_FILE_JSON)):
-        if input_str in INPUT_FILE_JSON[i]:
-            print_line(i)
+    @staticmethod
+    def hangul_pad_del(input_line):
+        # returns None if the line doesn't seem to be padded
 
-def edit():
-    print("수정할 줄 번호를 입력해 주세요")
-    print(">> ", end="", flush=True)
-    input_str = stdin.readline()
-    input_str = input_str[:-1] # assuming \n
-    if not input_str.isdecimal():
-        raise SyntaxError
-    linenum = int(input_str)
-    print("수정할 문자열을 입력해 주세요")
-    print_line(linenum)
-    print(">> ", end="", flush=True)
-    input_str = stdin.readline()
-    input_str = input_str[:-1] # assuming \n
-    INPUT_FILE_JSON[linenum] = input_str
-    print("수정 완료:")
-    print_line(linenum)
+        # Let's try preserving all trailing spaces
+        rstrip_len = len(input_line.rstrip())
+        trail_sp = input_line[rstrip_len:]
 
+        # testing if the string is padded - assuming every "Lo" is hangul
+        # 1. A row has to have at least one "Lo"
+        # 2. Every "Lo" has to be followed by space
+        has_lo = False
+        lo_but_no_sp = False
+        no_pad_str_lst = []
+
+        skip_flag = False
+
+        for char_pair in enumerate(input_line):
+            if skip_flag:
+                skip_flag = False
+                continue
+
+            char_cnt = char_pair[0]
+            new_chr = char_pair[1]
+            no_pad_str_lst.append(new_chr)
+
+            if unicodedata.category(new_chr) != "Lo":
+                continue
+
+            has_lo = True
+
+            if char_cnt+1 == len(input_line):
+                # lo_but_no_sp = True
+                # we have already deleted all trailing space
+                break
+
+            next_chr = input_line[char_cnt+1]
+            if next_chr != " ":
+                # & is linebreak, and appears right after "Lo" in padded
+                # We have to preserve this, while not messing up paddedness detection
+                if next_chr == "&":
+                    continue
+                lo_but_no_sp = True
+                break
+
+            # Current chr is Lo, and next is (padding) space.
+            # We don't need to check the next, and also skip adding no_pad_str_lst
+            skip_flag = True
+
+        if not has_lo or lo_but_no_sp:
+            return None
+
+        no_pad_str_lst.append(trail_sp)
+        return str.join("", no_pad_str_lst)
+
+    @staticmethod
+    def hangul_pad_add(input_line):
+        # Let's try preserving all trailing spaces
+        rstrip_len = len(input_line.rstrip())
+        trail_sp = input_line[rstrip_len:]
+
+        padded_str_list = []
+
+        for ln_pair in enumerate(input_line):
+            new_chr = ln_pair[1]
+            padded_str_list.append(new_chr)
+            if unicodedata.category(new_chr) != "Lo":
+                continue
+
+            if ln_pair[0]+1 == len(input_line):
+                break
+
+            # No padding before linebreak(&)
+            if input_line[ln_pair[0]+1] == "&":
+                continue
+
+            # Now probably good to pad
+            padded_str_list.append(" ")
+
+        padded_str_list.append(trail_sp)
+        return str.join("", padded_str_list)
+
+    def print_line(self, linenum, file=sys.stdout):
+        line_content = self.text_list_contents[linenum]
+        if len(self.padding_filtered) == 0:
+            print("---", linenum, line_content, file=file)
+        else:
+            flag = linenum in self.padding_filtered
+            if flag:
+                print("[*]", linenum, line_content, file=file)
+            else:
+                print("[ ]", linenum, line_content, file=file)
+
+    def print_dump(self):
+        dump_dir = os.path.join(WORK_FOLDER, DUMP_FOLDER)
+        if not os.path.isdir(dump_dir):
+            os.mkdir(dump_dir)
+
+        if ASM_FILE is None:
+            current_filename = "INDEX"
+        else:
+            current_filename = os.path.split(self.asm_path)[1]
+        dump_filename = "DUMP_{}_{}.txt".format(
+                current_filename,
+                datetime.datetime.now().replace(microsecond=0).isoformat()
+        )
+
+        dump_path = os.path.join(dump_dir, dump_filename)
+        print("{}에 덤프 파일을 생성합니다...".format(dump_path))
+
+        with open(dump_path, "w") as dump_file:
+            for line in enumerate(self.text_list_contents):
+                self.print_line(line[0], file=dump_file)
+
+    def search(self):
+        print("검색할 문자열을 입력해 주세요")
+        print("(빈 입력 = 취소)")
+        input_str = input(">> ")
+        if input_str == "":
+            return
+        for i in range(len(self.text_list_contents)):
+            if input_str in self.text_list_contents[i]:
+                self.print_line(i)
+
+    class DeserializedLines:
+        def __init__(self, input_lines, deserialization):
+            self.lnlist = []
+            for line in input_lines:
+                self.lnlist.append(deserialization(line))
+
+        def __getitem__(self, key):
+            return self.lnlist[key]["line"]
+
+        def __setitem__(self, key, value):
+            self.lnlist[key]["line"] = value
+
+        def __len__(self):
+            return len(self.lnlist)
+
+class StrIndex(TextListCommon):
+    def __init__(self, path):
+        super().__init__()
+        self.cache_path = path
+
+        if not self.open_index_cache():
+            print("Index cache was not found")
+            print("Opening {} instead".format(JSON_FILE_NAME))
+            if not os.path.isfile(JSON_FILE_NAME):
+                print("FATAL: {} was not found too".format(JSON_FILE_NAME))
+                sys.exit(1)
+            with open(JSON_FILE_NAME) as input_file:
+                # input_file_contents = input_file.read()
+                print("{} was successfully opened".format(JSON_FILE_NAME))
+                self.text_list_contents = json.load(input_file)
+                print("json successfully parsed")
+
+    def open_index_cache(self):
+        if not os.path.isfile(self.cache_path):
+            return False
+        with open(os.path.join(WORK_FOLDER, INDEX_CACHE_FILE_NAME)) as idx_cache_file:
+            idx_cache_list = idx_cache_file.readlines()
+        print("Index cache was successfully opened")
+        self.text_list_contents = self.DeserializedLines(idx_cache_list, self.deserialization)
+        print("Deserialization complete")
+        return True
+
+    def create_index_cache(self):
+        if not os.path.isdir("./code"):
+            print("ERROR: code folder was not found")
+            return False
+
+        # subprocess is probably better but whatever ¯\_(ツ)_/¯
+        if not os.path.isdir(WORK_FOLDER):
+            os.mkdir(WORK_FOLDER)
+        print("Creating index cache...")
+        os.system('grep -r ./code/ -e "^0x[0-9A-F]*: push\\.cst string" > '
+                + self.cache_path)
+        print("Index cache was created")
+        return True
+
+    def open_asm_file(self):
+        # TODO: Error handling when current index file is json
+        print("수정 모드로 진입할 줄 번호를 입력하세요")
+        input_str = input(">> ")
+        if not input_str.isdecimal():
+            raise SyntaxError
+        linenum = int(input_str)
+        self.print_line(linenum)
+        path = self.text_list_contents.lnlist[linenum]["path"]
+        print("위 줄이 포함된 {} 파일을 수정합니다...".format(path))
+        return StrAsm(path)
+
+    @staticmethod
+    def deserialization(input_line):
+        rtn_dict = {}
+        input_line = input_line.strip()
+        splt_ln = input_line.split(":")
+        rtn_dict["path"] = splt_ln[0]
+        rtn_dict["asmaddr"] = splt_ln[1]
+
+        idx_quot = input_line.find('"')
+        rtn_dict["line"] = input_line[idx_quot+1:-1]
+        return rtn_dict
+
+class StrAsm(TextListCommon):
+    def __init__(self, path):
+        super().__init__()
+        self.asm_path = path
+        self.string_line_num_list = list()
+        self.modified = False
+
+        lines_to_serialize = list()
+        with open(self.asm_path) as f:
+            self.asm_code_lines = f.readlines()
+        print("asm source was successfully opened")
+        for i in range(len(self.asm_code_lines)):
+            if not "push.cst string" in self.asm_code_lines[i]:
+                continue
+
+            self.string_line_num_list.append(i)
+            lines_to_serialize.append(self.asm_code_lines[i])
+
+        self.text_list_contents = self.DeserializedLines(lines_to_serialize, self.deserialization)
+        print("Deserialization complete")
+
+    def edit(self):
+        print("수정할 줄 번호를 입력해 주세요")
+        input_str = input(">> ")
+        if not input_str.isdecimal():
+            raise SyntaxError
+        linenum = int(input_str)
+        print("수정할 문자열을 입력해 주세요")
+        print("(빈 입력 = 취소)")
+        self.print_line(linenum)
+        input_str = input(">> ")
+        if(input_str == ""):
+            return
+        self.text_list_contents[linenum] = input_str
+        print("수정 완료:")
+        self.print_line(linenum)
+        self.modified = True
+
+    def write(self):
+        backup_filename = os.path.split(self.asm_path)[1] + ".bak"
+        backup_dir = os.path.join(WORK_FOLDER, BACKUP_FOLDER)
+        if os.path.isfile(os.path.join(backup_dir, backup_filename)):
+            suffix = 0
+            while os.path.isfile(os.path.join(backup_dir, backup_filename + "." + str(suffix))):
+                suffix += 1
+            backup_filename = backup_filename + "." + str(suffix)
+        backup_path = os.path.join(backup_dir, backup_filename)
+
+        print("Creating a backup as {}...".format(backup_path))
+        if not os.path.isdir(backup_dir):
+            os.mkdir(backup_dir)
+        shutil.copyfile(self.asm_path, backup_path)
+
+        print("현재 열려 있는 {} 파일을 저장합니다...".format(self.asm_path))
+        if len(self.padding_filtered):
+            print("정렬 공백 필터 상태입니다. 해제합니다...")
+            self.hangul_padding_toggle()
+
+        print("Serializing...")
+        for line_pair in enumerate(self.string_line_num_list):
+            src = self.text_list_contents.lnlist[line_pair[0]]
+            # dst = self.asm_code_lines[line_pair[1]]
+
+            serialized_line = '{}: push.cst string "{}"\n'.format(src["asmaddr"], src["line"])
+            self.asm_code_lines[line_pair[1]] = serialized_line
+            
+        print("Writing to disk...")
+        with open(self.asm_path, "w") as write_file:
+            write_file.writelines(self.asm_code_lines)
+
+        print("저장 완료.")
+        print("인덱스 캐시는 자동 갱신되지 않습니다. 직접 새로고침 해 주세요.")
+        self.modified = False
+
+    def close_confirm(self):
+        if self.modified == False:
+            return True
+
+        print("수정사항이 저장되지 않을 수 있습니다.")
+        print("정말로 닫으시려면 >Yes<를 입력해 주세요.")
+        input_str = input(">> ")
+        if input_str != "Yes":
+            return False
+
+        return True
+
+    @staticmethod
+    def deserialization(input_line):
+        rtn_dict = {}
+        input_line = input_line.strip()
+        splt_ln = input_line.split(":")
+        rtn_dict["asmaddr"] = splt_ln[0]
+
+        idx_quot = input_line.find('"')
+        rtn_dict["line"] = input_line[idx_quot+1:-1]
+        return rtn_dict
 
 if __name__ == '__main__':
-    with open(INPUT_FILE_NAME) as input_file:
-        # input_file_contents = input_file.read()
-        print("strings.json was successfully open")
-        INPUT_FILE_JSON = json.load(input_file)
-        print("json successfully parsed")
+    cache_file_path = os.path.join(WORK_FOLDER, INDEX_CACHE_FILE_NAME)
+    INDEX_FILE = StrIndex(cache_file_path)
 
     print_help()
     while 1:
-        # start of input
-        print("> ", end="", flush=True)
-        main_cmd = stdin.readline()
-        # end of input
+        if ASM_FILE is None:
+            FILE_REF = INDEX_FILE
+            prompt_prefix = "INDEX"
+        else:
+            FILE_REF = ASM_FILE
+            if ASM_FILE.modified:
+                prompt_prefix = "* ASM"
+            else:
+                prompt_prefix = "  ASM"
+
+        main_cmd = input("{}> ".format(prompt_prefix))
         try:
             if not main_cmd[0].isdecimal():
-                input_cmd_parser(main_cmd)
+                parse_input_cmd(main_cmd)
                 continue
-            read_list = input_decimal_parser(main_cmd)
-        except (SyntaxError, ValueError):
+
+            read_list = parse_input_decimal(main_cmd)
+
+            for main_prn_ln in read_list:
+                FILE_REF.print_line(main_prn_ln)
+        except SyntaxError:
             print("알 수 없는 명령어")
-            continue
+        except ValueError:
+            print("올바르지 않은 값")
         except IndexError:
             print("범위 초과")
-            continue
-
-        try:
-            for main_prn_ln in read_list:
-                print_line(main_prn_ln)
-        except (IndexError, ValueError):
-            print("범위 초과")
-            continue
